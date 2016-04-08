@@ -23,6 +23,7 @@ fn main() {
     drop();
     if_let();
     trait_objects();
+    closures();
 }
 
 fn variable_bindings() {
@@ -783,4 +784,71 @@ fn trait_objects() {
         println!("{}", x.method());
     }
     do_something_else(&x);
+}
+
+fn closures() {
+    // This is a closure: |args| expression
+    let plus_one = |x: i32| x + 1;
+    assert_eq!(2, plus_one(1));
+
+    // {} is expression, so multiline closure, arguments/return value don't
+    // have to be annotated, but could
+    let plus_two = |x| -> i32 {
+        let mut result: i32 = x;
+        result += 2;
+        result
+    };
+    assert_eq!(4, plus_two(2));
+
+    let num = 5;
+    // Here plus_num borrows the variable binding num
+    let plus_num = |x: i32| x + num;
+
+    // move closures
+    // regular closure, which borrows the variable num_a, and modify the
+    // underlying value in the closure.
+    let mut num_a = 5;
+    {
+        let mut add_num = |x: i32| num_a += x;
+        add_num(5);
+    }
+    assert_eq!(10, num_a);
+
+    // move closures, which creates an copy and takes ownership of the variable
+    let mut num_b = 5;
+    {
+        let mut add_num = move |x: i32| num_b += x;
+        add_num(5);
+    }
+    assert_eq!(5, num_b);
+
+    // Closures are traits, Fn, FnMut, FnOnce.
+    // The following is statically dispatched
+    fn call_with_one<F>(some_closure: F) -> i32
+        where F: Fn(i32) -> i32 {
+        
+        some_closure(1)
+    }
+
+    let answer = call_with_one(|x| x + 2);
+    assert_eq!(3, answer);
+
+    // This is dynamically dispatched (trait object)
+    fn call_with_two(some_closure: &Fn(i32) -> i32) -> i32 {
+        some_closure(2)
+    }
+
+    let answer = call_with_two(&|x| x + 2);
+    assert_eq!(4, answer);
+
+    // How to return a closure
+    fn factory() -> Box<Fn(i32) -> i32> {
+        let num = 5;
+        Box::new(move |x| x + num)
+    }
+
+    let f = factory();
+    let answer = f(1);
+    assert_eq!(6, answer);
+
 }
